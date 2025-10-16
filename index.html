@@ -1,478 +1,677 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <title>Captcha Solver (Tesseract.js)</title>
+  <meta charset="UTF-8" />
+  <title>Captcha Solver (Client-side OCR)</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
-    :root { color-scheme: light dark; }
+    :root {
+      color-scheme: light dark;
+    }
     body {
-      font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Arial, sans-serif;
-      margin: 0; padding: 0;
-      display: grid; min-height: 100vh; place-items: center;
-      background: canvas; color: canvastext;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+      margin: 0;
+      padding: 16px;
+      display: grid;
+      gap: 16px;
+      background: #0b0c10;
+      color: #e8e8e8;
     }
-    .app {
-      width: min(900px, 95vw);
-      display: grid; gap: 16px; padding: 20px; box-sizing: border-box;
-      border: 1px solid color-mix(in oklab, canvastext 12%, transparent);
-      border-radius: 12px;
-      background: color-mix(in oklab, canvas 94%, canvastext 6%);
-      box-shadow: 0 6px 30px color-mix(in oklab, canvastext 10%, transparent);
+    header {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: center;
+      justify-content: space-between;
     }
-    h1 { margin: 0 0 4px 0; font-size: 1.25rem; }
-    .row { display: grid; gap: 10px; }
-    .grid {
-      display: grid; gap: 16px;
-      grid-template-columns: 1fr 1fr;
+    h1 {
+      font-size: 1.25rem;
+      margin: 0;
     }
-    @media (max-width: 800px) {
-      .grid { grid-template-columns: 1fr; }
+    .card {
+      background: #14161b;
+      border: 1px solid #222531;
+      border-radius: 10px;
+      padding: 14px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.15);
     }
-    label { font-size: 0.9rem; color: color-mix(in oklab, canvastext 70%, canvas); }
-    input[type="url"] {
-      width: 100%; padding: 10px 12px; border-radius: 8px;
-      border: 1px solid color-mix(in oklab, canvastext 20%, transparent);
-      background: canvas; color: canvastext; font-size: 0.95rem;
+    label {
+      font-size: 0.9rem;
+      opacity: 0.9;
+      display: block;
+      margin-bottom: 6px;
     }
-    .btns { display: flex; gap: 10px; flex-wrap: wrap; }
+    input[type="url"], input[type="text"] {
+      width: 100%;
+      padding: 10px 12px;
+      border-radius: 8px;
+      border: 1px solid #2a2f3a;
+      background: #0f1116;
+      color: #e8e8e8;
+      outline: none;
+    }
+    input[type="url"]:focus, input[type="text"]:focus {
+      border-color: #5b8cff;
+      box-shadow: 0 0 0 3px rgba(91,140,255,0.18);
+    }
+    .row {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 16px;
+    }
+    @media (min-width: 900px) {
+      .row {
+        grid-template-columns: 1.2fr 1fr;
+      }
+    }
+    .buttons {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
     button {
-      border: 1px solid color-mix(in oklab, canvastext 20%, transparent);
-      background: color-mix(in oklab, canvas 85%, canvastext 7%);
-      color: canvastext; padding: 10px 14px; border-radius: 8px;
-      cursor: pointer; font-weight: 600;
+      padding: 10px 14px;
+      border-radius: 8px;
+      border: 1px solid #2a2f3a;
+      background: #1a1f2b;
+      color: #e8e8e8;
+      cursor: pointer;
     }
-    button:disabled { opacity: 0.6; cursor: not-allowed; }
-    .panel {
-      padding: 10px; border-radius: 10px; border: 1px dashed color-mix(in oklab, canvastext 20%, transparent);
-      background: color-mix(in oklab, canvas 90%, canvastext 4%);
+    button.primary {
+      background: #5b8cff;
+      border-color: #5b8cff;
+      color: white;
     }
-    .imgbox {
-      display: grid; place-items: center; padding: 6px; background: canvas; border-radius: 8px;
-      border: 1px solid color-mix(in oklab, canvastext 15%, transparent);
+    button:hover {
+      filter: brightness(1.05);
+    }
+    .img-wrap {
+      display: grid;
+      place-items: center;
       min-height: 120px;
+      border: 1px dashed #2a2f3a;
+      border-radius: 10px;
+      background: #0f1116;
+      padding: 10px;
     }
-    img, canvas.preview {
-      max-width: 100%; height: auto; image-rendering: crisp-edges; image-rendering: pixelated;
+    .img-wrap img, .img-wrap canvas {
+      max-width: 100%;
+      image-rendering: pixelated;
     }
-    .status { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; font-size: 0.9rem; }
-    .kv { display: grid; grid-template-columns: 140px 1fr; gap: 8px 12px; }
-    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
-    .small { font-size: 0.85rem; opacity: 0.8; }
-    .good { color: #0b8a42; font-weight: 700; }
-    .warn { color: #9b6c00; font-weight: 700; }
-    .bad  { color: #b00020; font-weight: 700; }
-    .footer { font-size: 0.8rem; opacity: 0.7; text-align: center; }
+    .status {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-size: 0.95rem;
+      color: #aeb8ff;
+      white-space: pre-wrap;
+      min-height: 1.2em;
+    }
+    .solution {
+      font-size: 1.6rem;
+      font-weight: 700;
+      letter-spacing: 2px;
+      padding: 10px 12px;
+      border-radius: 8px;
+      background: #0f1116;
+      border: 1px solid #2a2f3a;
+      color: #75ffa7;
+      text-align: center;
+    }
+    .hint {
+      font-size: 0.85rem;
+      opacity: 0.8;
+    }
+    .hidden {
+      display: none !important;
+    }
+    footer {
+      opacity: 0.7;
+      font-size: 0.85rem;
+    }
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
   </style>
-  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+  <script src="https://unpkg.com/ocrad.js/ocrad.js"></script>
 </head>
 <body>
-  <div class="app">
-    <div class="row">
-      <h1>Captcha Solver</h1>
-      <div class="small">Pass an image URL with ?url=https://.../image.png or use the default sample.</div>
-    </div>
+  <header>
+    <h1>Captcha Solver</h1>
+    <div class="hint">Pass an image URL via ?url=https://.../image.png</div>
+  </header>
 
+  <section class="card">
     <div class="row">
-      <label for="url">Captcha image URL</label>
-      <input id="url" type="url" placeholder="https://example.com/captcha.png" />
-      <div class="btns">
-        <button id="loadBtn">Load URL</button>
-        <button id="solveBtn" disabled>Solve</button>
-        <label class="btns">
-          <input id="file" type="file" accept="image/*" style="display:none" />
-          <button id="fileBtn" type="button">Upload image</button>
-        </label>
-      </div>
-      <div class="small">Tip: If a remote server blocks cross-origin access, the app will automatically try a CORS image proxy.</div>
-    </div>
-
-    <div class="grid">
-      <div class="panel">
-        <div class="kv">
-          <div>Using URL</div>
-          <div class="mono small" id="usingUrl">(loading...)</div>
-          <div>Preprocess</div>
-          <div class="small" id="prepInfo">auto (grayscale + threshold + 2x scale)</div>
-          <div>OCR config</div>
-          <div class="small" id="cfgInfo">lang: eng, PSM: SINGLE_WORD, whitelist: A–Z a–z 0–9</div>
+      <div>
+        <label for="url">Captcha image URL</label>
+        <input id="url" type="url" placeholder="https://example.com/captcha.png" />
+        <div class="buttons" style="margin-top:8px;">
+          <button class="primary" id="loadBtn">Load & Solve</button>
+          <button id="solveBtn">Re-solve</button>
+          <button id="sampleBtn">Use Sample</button>
         </div>
-        <div style="height:8px"></div>
-        <div class="imgbox">
-          <img id="img" alt="Captcha" />
+        <div class="hint" style="margin-top:6px;">
+          Tip: Remote images should allow CORS for in-browser OCR. If they don't, download the image and open locally.
         </div>
       </div>
-
-      <div class="panel">
-        <div class="kv">
-          <div>Status</div>
+      <div>
+        <label>Output</label>
+        <div class="grid-2">
+          <div class="solution" id="solution">—</div>
           <div class="status" id="status">Idle</div>
-          <div>Result</div>
-          <div>
-            <div id="result" class="mono good">—</div>
-            <div class="small">Confidence: <span id="conf" class="mono">—</span></div>
-            <div class="btns" style="margin-top:8px">
-              <button id="copyBtn" disabled>Copy text</button>
-              <button id="solveAgainBtn" disabled>Solve again</button>
-              <button id="toggleViewBtn" disabled>Show preprocessed</button>
-            </div>
-          </div>
         </div>
-        <div style="height:8px"></div>
-        <canvas id="preCanvas" class="preview" hidden></canvas>
       </div>
     </div>
+  </section>
 
-    <div class="footer">
-      MIT Licensed. OCR powered by Tesseract.js (CDN).
+  <section class="card">
+    <div class="row">
+      <div>
+        <label>Captcha image</label>
+        <div class="img-wrap">
+          <img id="img" alt="captcha" crossOrigin="anonymous" />
+        </div>
+        <div class="hint" style="margin-top:6px;">Displayed image will be processed in-browser (no server upload).</div>
+      </div>
+      <div>
+        <label>Processing preview</label>
+        <div class="img-wrap">
+          <canvas id="preview" width="10" height="10"></canvas>
+        </div>
+        <div class="buttons" style="margin-top:8px;">
+          <button id="togglePreview">Toggle Preview</button>
+          <button id="downloadCanvas">Download Processed</button>
+        </div>
+      </div>
     </div>
-  </div>
+  </section>
+
+  <footer>
+    MIT License. Client-side OCR using OCRAD.js with adaptive thresholding and morphology to improve captcha legibility.
+  </footer>
 
   <script>
-    // Utility: parse URL param
-    const q = new URLSearchParams(location.search);
-    const $ = (sel) => document.querySelector(sel);
-    const els = {
-      url: $('#url'),
-      img: $('#img'),
-      status: $('#status'),
-      result: $('#result'),
-      conf: $('#conf'),
-      usingUrl: $('#usingUrl'),
-      loadBtn: $('#loadBtn'),
-      solveBtn: $('#solveBtn'),
-      copyBtn: $('#copyBtn'),
-      solveAgainBtn: $('#solveAgainBtn'),
-      toggleViewBtn: $('#toggleViewBtn'),
-      file: $('#file'),
-      fileBtn: $('#fileBtn'),
-      preCanvas: $('#preCanvas'),
-      cfgInfo: $('#cfgInfo'),
-      prepInfo: $('#prepInfo'),
-    };
+    // Utilities
+    const qs = new URLSearchParams(location.search);
+    const $ = (id) => document.getElementById(id);
+    const urlInput = $('url');
+    const img = $('img');
+    const solutionEl = $('solution');
+    const statusEl = $('status');
+    const previewCanvas = $('preview');
+    const pctx = previewCanvas.getContext('2d', { willReadFrequently: true });
 
-    // Generate a default sample captcha (data URL) on the fly to avoid CORS issues.
-    function generateSampleCaptcha() {
-      const text = 'H7K2F';
-      const w = 220, h = 80;
+    let lastVariants = [];
+    let abortSolve = { flag: false };
+
+    function setStatus(msg) {
+      statusEl.textContent = msg;
+    }
+    function setSolution(text) {
+      solutionEl.textContent = text || '—';
+    }
+
+    // Default sample generator (no external dependency)
+    function generateSampleCaptcha(text = null, width = 240, height = 90) {
       const c = document.createElement('canvas');
-      c.width = w; c.height = h;
+      c.width = width; c.height = height;
       const ctx = c.getContext('2d');
 
       // Background
-      ctx.fillStyle = '#fff';
-      ctx.fillRect(0, 0, w, h);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, width, height);
 
-      // Noise lines
-      for (let i = 0; i < 6; i++) {
-        ctx.strokeStyle = `rgba(${100+i*20}, ${120+i*10}, ${140+i*5}, 0.25)`;
-        ctx.lineWidth = 2 + Math.random()*1.5;
+      // Light noise
+      for (let i = 0; i < 80; i++) {
+        ctx.fillStyle = `rgba(0,0,0,${Math.random() * 0.08})`;
         ctx.beginPath();
-        ctx.moveTo(Math.random()*w*0.2, Math.random()*h);
-        ctx.bezierCurveTo(
-          Math.random()*w, Math.random()*h,
-          Math.random()*w, Math.random()*h,
-          w - Math.random()*w*0.2, Math.random()*h
-        );
+        ctx.arc(Math.random() * width, Math.random() * height, Math.random() * 2 + 0.5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // Random text if not provided
+      if (!text) {
+        const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+        text = Array.from({length: 5}, () => chars[Math.floor(Math.random()*chars.length)]).join('');
+      }
+
+      // Draw guide lines
+      ctx.lineWidth = 1.5;
+      for (let i = 0; i < 2; i++) {
+        ctx.strokeStyle = `rgba(0,0,0,${0.15 + Math.random()*0.1})`;
+        ctx.beginPath();
+        ctx.moveTo(0, Math.random() * height);
+        for (let x = 0; x <= width; x += 8) {
+          const y = height/2 + Math.sin((x/width)*Math.PI*2*(1+i)) * (height/6) + (Math.random()-0.5)*4;
+          if (x === 0) ctx.moveTo(0, y);
+          ctx.lineTo(x, y);
+        }
         ctx.stroke();
       }
 
       // Text
       ctx.save();
-      ctx.translate(10, h*0.7);
-      ctx.font = 'bold 48px "Arial Black", Impact, system-ui, sans-serif';
-      ctx.fillStyle = '#111';
-      let x = 0;
-      for (const ch of text) {
-        const angle = (Math.random()*10 - 5) * Math.PI/180;
+      ctx.font = 'bold 42px monospace';
+      ctx.textBaseline = 'middle';
+      const xStart = 24;
+      const spacing = (width - 48) / text.length;
+      for (let i = 0; i < text.length; i++) {
+        const ch = text[i];
         ctx.save();
-        ctx.translate(x, 0);
+        const x = xStart + i * spacing + (Math.random()-0.5)*6;
+        const y = height/2 + (Math.random()-0.5)*6;
+        const angle = (Math.random()-0.5) * 0.25; // small rotation
+        ctx.translate(x, y);
         ctx.rotate(angle);
-        ctx.shadowColor = 'rgba(0,0,0,0.15)';
-        ctx.shadowBlur = 2;
-        ctx.fillText(ch, 0, 0);
+        ctx.fillStyle = '#000000';
+        ctx.fillText(ch, 0, 4);
         ctx.restore();
-        x += 34 + Math.random()*6;
       }
       ctx.restore();
 
-      // Dots
-      for (let i=0;i<180;i++){
-        ctx.fillStyle = `rgba(0,0,0,${Math.random()*0.15})`;
-        ctx.fillRect(Math.random()*w, Math.random()*h, 1, 1);
+      // Foreground speckles
+      for (let i = 0; i < 30; i++) {
+        ctx.fillStyle = `rgba(0,0,0,${0.25 + Math.random()*0.15})`;
+        ctx.fillRect(Math.random()*width, Math.random()*height, 1, 1);
       }
 
-      return { dataUrl: c.toDataURL('image/png'), text };
+      const dataUrl = c.toDataURL('image/png');
+      return { dataUrl, text };
     }
 
-    // Otsu threshold
-    function otsuThreshold(gray) {
-      const hist = new Array(256).fill(0);
-      for (let i=0;i<gray.length;i++) hist[gray[i]]++;
-      const total = gray.length;
-      let sum = 0;
-      for (let t=0;t<256;t++) sum += t * hist[t];
+    function clamp(v, lo, hi) { return v < lo ? lo : (v > hi ? hi : v); }
 
-      let sumB = 0, wB = 0, wF = 0, varMax = 0, threshold = 128;
-      for (let t=0;t<256;t++) {
-        wB += hist[t]; if (wB === 0) continue;
-        wF = total - wB; if (wF === 0) break;
-        sumB += t * hist[t];
+    // Image Processing
+    function toGray(imageData) {
+      const d = imageData.data;
+      for (let i = 0; i < d.length; i += 4) {
+        const r = d[i], g = d[i+1], b = d[i+2];
+        const y = (0.2126*r + 0.7152*g + 0.0722*b);
+        d[i] = d[i+1] = d[i+2] = y;
+      }
+      return imageData;
+    }
+
+    function applyContrastBrightness(imageData, contrast = 1.2, brightness = 0) {
+      const d = imageData.data;
+      const c = contrast;
+      const b = brightness;
+      for (let i = 0; i < d.length; i += 4) {
+        let v = d[i] * c + b;
+        v = clamp(v, 0, 255);
+        d[i] = d[i+1] = d[i+2] = v;
+      }
+      return imageData;
+    }
+
+    function otsuThreshold(grayData) {
+      // Expect grayscale ImageData
+      const d = grayData.data;
+      const hist = new Array(256).fill(0);
+      let total = 0;
+      for (let i = 0; i < d.length; i += 4) {
+        hist[d[i]|0]++;
+        total++;
+      }
+      let sum = 0;
+      for (let i = 0; i < 256; i++) sum += i * hist[i];
+      let sumB = 0;
+      let wB = 0;
+      let varMax = -1;
+      let threshold = 127;
+      for (let i = 0; i < 256; i++) {
+        wB += hist[i];
+        if (wB === 0) continue;
+        const wF = total - wB;
+        if (wF === 0) break;
+        sumB += i * hist[i];
         const mB = sumB / wB;
         const mF = (sum - sumB) / wF;
         const between = wB * wF * (mB - mF) * (mB - mF);
-        if (between >= varMax) { varMax = between; threshold = t; }
+        if (between > varMax) {
+          varMax = between;
+          threshold = i;
+        }
       }
       return threshold;
     }
 
-    // Preprocess image: scale 2x, grayscale, Otsu threshold
-    function preprocessImage(imgEl) {
-      const scale = 2; // upscale to help OCR
-      const w = Math.max(1, Math.floor(imgEl.naturalWidth * scale));
-      const h = Math.max(1, Math.floor(imgEl.naturalHeight * scale));
-      const c = els.preCanvas;
-      c.width = w; c.height = h;
-      const ctx = c.getContext('2d');
-      ctx.imageSmoothingEnabled = false;
-      ctx.drawImage(imgEl, 0, 0, w, h);
-
-      let imgData;
-      try {
-        imgData = ctx.getImageData(0, 0, w, h);
-      } catch (e) {
-        // Tainted canvas due to CORS.
-        throw new Error('TAINTED_CANVAS');
+    function binarize(grayData, thr = 128, invert = false) {
+      const d = grayData.data;
+      const t = thr|0;
+      for (let i = 0; i < d.length; i += 4) {
+        const v = d[i];
+        let out = v > t ? 255 : 0;
+        if (invert) out = 255 - out;
+        d[i] = d[i+1] = d[i+2] = out;
       }
-      const data = imgData.data;
-      const gray = new Uint8ClampedArray(w*h);
-      for (let i=0, j=0; i<data.length; i+=4, j++) {
-        const r = data[i], g = data[i+1], b = data[i+2];
-        // Luminosity
-        gray[j] = (0.2126*r + 0.7152*g + 0.0722*b) | 0;
-      }
-      const t = otsuThreshold(gray);
-      for (let j=0, i=0; j<gray.length; j++, i+=4) {
-        const v = gray[j] > t ? 255 : 0;
-        data[i] = data[i+1] = data[i+2] = v;
-        data[i+3] = 255;
-      }
-      ctx.putImageData(imgData, 0, 0);
-      return c.toDataURL('image/png');
+      return grayData;
     }
 
-    // Try loading image with crossOrigin and optionally through CORS proxy
-    async function loadImageWithFallbacks(srcUrl) {
-      // Attempt 1: direct with crossOrigin=anonymous
-      try {
-        const img1 = await loadImage(srcUrl, true);
-        return { img: img1, usedProxy: false, displayUrl: srcUrl };
-      } catch (e1) {
-        // Attempt 2: proxy through images.weserv.nl
-        const proxy = 'https://images.weserv.nl/?url=' + encodeURIComponent(srcUrl);
-        try {
-          const img2 = await loadImage(proxy, true);
-          return { img: img2, usedProxy: true, displayUrl: proxy };
-        } catch (e2) {
-          // Attempt 3: load without CORS (display only), OCR will try URL directly
-          try {
-            const img3 = await loadImage(srcUrl, false);
-            return { img: img3, usedProxy: false, displayUrl: srcUrl, tainted: true };
-          } catch (e3) {
-            throw new Error('Failed to load image from URL');
+    function copyImageData(ctx, src) {
+      const cpy = ctx.createImageData(src.width, src.height);
+      cpy.data.set(src.data);
+      return cpy;
+    }
+
+    function morph3x3(binaryImgData, width, height, op = 'dilate') {
+      // binary image with pixel values 0 or 255
+      const src = binaryImgData.data;
+      const out = new Uint8ClampedArray(src.length);
+      const isDilate = op === 'dilate';
+      for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+          let hit = isDilate ? 0 : 1;
+          for (let dy = -1; dy <= 1; dy++) {
+            for (let dx = -1; dx <= 1; dx++) {
+              const xx = x + dx;
+              const yy = y + dy;
+              if (xx < 0 || yy < 0 || xx >= width || yy >= height) continue;
+              const idx = (yy * width + xx) * 4;
+              const v = src[idx] > 127 ? 1 : 0;
+              if (isDilate) {
+                hit = hit || v;
+              } else {
+                hit = hit && v;
+              }
+            }
           }
+          const i4 = (y * width + x) * 4;
+          const val = hit ? 255 : 0;
+          out[i4] = out[i4+1] = out[i4+2] = val;
+          out[i4+3] = 255;
         }
       }
+      const res = new ImageData(out, width, height);
+      return res;
     }
 
-    function loadImage(url, useCORS) {
+    function scaleTo(canvas, targetW, targetH) {
+      const out = document.createElement('canvas');
+      out.width = targetW;
+      out.height = targetH;
+      const ctx = out.getContext('2d');
+      ctx.imageSmoothingEnabled = false;
+      ctx.drawImage(canvas, 0, 0, targetW, targetH);
+      return out;
+    }
+
+    function drawToCanvas(imageEl) {
+      const c = document.createElement('canvas');
+      c.width = imageEl.naturalWidth || imageEl.width;
+      c.height = imageEl.naturalHeight || imageEl.height;
+      const ctx = c.getContext('2d', { willReadFrequently: true });
+      ctx.drawImage(imageEl, 0, 0);
+      return c;
+    }
+
+    // OCR Pipeline
+    function postprocessText(t) {
+      if (!t) return '';
+      // Normalize: remove whitespace and punctuation often misread
+      t = t.replace(/\s+/g, '');
+      t = t.replace(/[|!;:'",.<>()[\]{}]/g, '');
+      // Standardize ambiguous characters
+      t = t.replace(/[\u2018\u2019\u0060]/g, '');
+      // OCR common confusion fixes
+      t = t.replace(/§/g, 'S').replace(/\$/g, 'S');
+      t = t.replace(/@/g, 'A');
+      t = t.replace(/\?/g, '7');
+      // Zero/O confusion
+      t = t.replace(/Ø|⭕|○|◯|°|•/g, 'O');
+      // One/l/I confusion
+      t = t.replace(/[|]/g, 'I').replace(/!/, 'I');
+      t = t.toUpperCase();
+      t = t.replace(/[^A-Z0-9]/g, '');
+      return t;
+    }
+
+    function scoreText(t) {
+      if (!t) return -1e6;
+      let score = 0;
+      const len = t.length;
+      // Ideal captcha length usually 4-7
+      if (len >= 4 && len <= 7) score += 20;
+      else score -= Math.abs(5 - len) * 3;
+
+      // Alnum ratio
+      const alnum = (t.match(/[A-Z0-9]/g) || []).length;
+      score += alnum * 2;
+
+      // Penalize repetition excessively
+      const unique = new Set(t.split('')).size;
+      score += unique * 1.5;
+
+      // Slightly prefer having digits present
+      if (/[0-9]/.test(t)) score += 3;
+
+      return score;
+    }
+
+    function prepareVariants(baseCanvas) {
+      const ctx = baseCanvas.getContext('2d', { willReadFrequently: true });
+      const w = baseCanvas.width, h = baseCanvas.height;
+      const src = ctx.getImageData(0, 0, w, h);
+
+      const work = document.createElement('canvas');
+      work.width = w; work.height = h;
+      const wctx = work.getContext('2d', { willReadFrequently: true });
+
+      function canvasFrom(imageData) {
+        const c = document.createElement('canvas');
+        c.width = imageData.width; c.height = imageData.height;
+        c.getContext('2d').putImageData(imageData, 0, 0);
+        return c;
+      }
+
+      // Build variants
+      const variants = [];
+      const gray = copyImageData(wctx, src);
+      toGray(gray);
+      variants.push({ name: 'gray+contrast1.2', canvas: (function(){
+        const g = copyImageData(wctx, gray);
+        applyContrastBrightness(g, 1.2, 0);
+        return canvasFrom(g);
+      })() });
+
+      // Otsu binarization
+      const g2 = copyImageData(wctx, gray);
+      const t = otsuThreshold(g2);
+      binarize(g2, t, false);
+      variants.push({ name: `otsu(${t})`, canvas: canvasFrom(g2) });
+
+      // Inverted Otsu
+      const g3 = copyImageData(wctx, gray);
+      binarize(g3, t, true);
+      variants.push({ name: `otsu-inv(${t})`, canvas: canvasFrom(g3) });
+
+      // Fixed thresholds
+      [160, 128, 96].forEach(th => {
+        const gf = copyImageData(wctx, gray);
+        binarize(gf, th, false);
+        variants.push({ name: `th-${th}`, canvas: canvasFrom(gf) });
+      });
+
+      // Morphology on Otsu
+      const mDilate = morph3x3(g2, w, h, 'dilate');
+      variants.push({ name: 'otsu+dilate', canvas: canvasFrom(mDilate) });
+      const mErode = morph3x3(g2, w, h, 'erode');
+      variants.push({ name: 'otsu+erode', canvas: canvasFrom(mErode) });
+
+      // Scale up to help OCR
+      const scales = [1.5, 2.0];
+      const baseSet = variants.slice();
+      baseSet.forEach(v => {
+        scales.forEach(s => {
+          const cScaled = scaleTo(v.canvas, Math.round(v.canvas.width * s), Math.round(v.canvas.height * s));
+          variants.push({ name: `${v.name}+scale${s}`, canvas: cScaled });
+        });
+      });
+
+      return variants;
+    }
+
+    function showPreview(canvas) {
+      if (!canvas) return;
+      previewCanvas.width = canvas.width;
+      previewCanvas.height = canvas.height;
+      pctx.imageSmoothingEnabled = false;
+      pctx.drawImage(canvas, 0, 0);
+    }
+
+    async function solveCanvasWithVariants(variants, onProgress, abortRef) {
+      let best = { text: '', score: -1e9, name: '' };
+      let shownPreview = false;
+
+      // Try early-show strategy: if score decent, update UI immediately
+      for (let i = 0; i < variants.length; i++) {
+        if (abortRef.flag) break;
+        const v = variants[i];
+        try {
+          const tRaw = OCRAD(v.canvas);
+          const t = postprocessText(tRaw);
+          const s = scoreText(t);
+          if (s > best.score) {
+            best = { text: t, score: s, name: v.name };
+            if (s > 22 && !shownPreview) {
+              // Good candidate: show preview
+              showPreview(v.canvas);
+              shownPreview = true;
+            }
+          }
+          if (typeof onProgress === 'function') onProgress(i+1, variants.length, v.name, t, s);
+        } catch (e) {
+          // Ignore individual variant errors
+        }
+        // Yield to UI
+        await new Promise(r => setTimeout(r, 0));
+      }
+      return best;
+    }
+
+    async function solveImageElement(imageEl, abortRef) {
+      setSolution('…');
+      setStatus('Preprocessing...');
+      const baseCanvas = drawToCanvas(imageEl);
+      let variants = prepareVariants(baseCanvas);
+      lastVariants = variants;
+
+      const start = performance.now();
+
+      // Race with a 15s timeout
+      let timeoutId;
+      const result = await Promise.race([
+        (async () => {
+          let lastMsgTime = 0;
+          const best = await solveCanvasWithVariants(variants, (i, total, name, t, s) => {
+            const now = performance.now();
+            if (now - lastMsgTime > 120) {
+              setStatus(`Trying variant ${i}/${total}: ${name}\nCandidate: ${t || '∅'} (score ${s.toFixed(1)})`);
+              lastMsgTime = now;
+            }
+            if (t && s > 18) {
+              setSolution(t);
+            }
+          }, abortRef);
+          return best;
+        })(),
+        new Promise(resolve => {
+          timeoutId = setTimeout(() => {
+            resolve({ text: '', score: -1e9, name: 'timeout' });
+          }, 15000);
+        })
+      ]);
+
+      clearTimeout(timeoutId);
+      const elapsed = ((performance.now() - start) / 1000).toFixed(2);
+      if (result.name === 'timeout') {
+        setStatus(`Timed out after ${elapsed}s. Best candidate shown if found.`);
+      } else {
+        setStatus(`Done in ${elapsed}s. Best variant: ${result.name}`);
+      }
+      if (result.text && result.text !== '…') {
+        setSolution(result.text);
+      } else if (solutionEl.textContent === '…' || !solutionEl.textContent || solutionEl.textContent === '—') {
+        setSolution(result.text || ''); // if empty, show —
+        if (!result.text) setSolution(''); // will render as —
+      }
+    }
+
+    async function loadImage(src) {
       return new Promise((resolve, reject) => {
-        const img = new Image();
-        if (useCORS) img.crossOrigin = 'anonymous';
-        img.onload = () => resolve(img);
-        img.onerror = (e) => reject(e);
-        img.src = url;
+        const im = new Image();
+        im.crossOrigin = 'anonymous';
+        im.onload = () => resolve(im);
+        im.onerror = (e) => reject(e);
+        im.src = src;
       });
     }
 
-    // OCR with Tesseract.js
-    async function ocrImage(imageSource) {
-      // Options tuned for single word captchas
-      const opts = {
-        logger: (m) => {
-          els.status.textContent = `${m.status ?? 'progress'} ${(m.progress ? (Math.round(m.progress*100)+'%') : '')}`;
-        },
-        // Tesseract config variables
-        tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789',
-        tessedit_pageseg_mode: Tesseract.PSM.SINGLE_WORD, // Try SINGLE_LINE via ?psm=line
-      };
+    async function displayAndSolve(src) {
+      abortSolve.flag = true; // cancel previous
+      await new Promise(r => setTimeout(r, 10));
+      abortSolve = { flag: false };
 
-      // Allow PSM override via query (?psm=line|word|auto)
-      const psm = (q.get('psm') || '').toLowerCase();
-      if (psm === 'line') opts.tessedit_pageseg_mode = Tesseract.PSM.SINGLE_LINE;
-      if (psm === 'auto') opts.tessedit_pageseg_mode = Tesseract.PSM.AUTO;
-
-      // 15s guard timer just to update UI if something stalls
-      let timedOut = false;
-      const timer = setTimeout(() => {
-        timedOut = true;
-        els.status.textContent = 'Taking longer than expected... still working';
-      }, 15000);
-
+      setStatus('Loading image...');
+      setSolution('—');
       try {
-        const { data } = await Tesseract.recognize(imageSource, 'eng', opts);
-        clearTimeout(timer);
-        if (timedOut) {
-          // It's okay; we still show result.
-        }
-        return data;
+        img.src = src;
+        await new Promise((res, rej) => {
+          img.onload = () => res();
+          img.onerror = (e) => rej(e);
+        });
+        setStatus('Image loaded. Solving...');
+        solveImageElement(img, abortSolve);
       } catch (e) {
-        clearTimeout(timer);
-        throw e;
-      }
-    }
-
-    function setBusy(b) {
-      els.solveBtn.disabled = b;
-      els.loadBtn.disabled = b;
-      els.fileBtn.disabled = b;
-      els.solveAgainBtn.disabled = b;
-      if (b) {
-        els.status.textContent = 'Working...';
-      }
-    }
-
-    let current = {
-      originalUrl: '',
-      displayUrl: '',
-      preDataUrl: '',
-      usingProxy: false,
-      tainted: false,
-    };
-
-    async function solveFlow(fromUrl) {
-      setBusy(true);
-      els.toggleViewBtn.disabled = true;
-      els.copyBtn.disabled = true;
-      els.solveAgainBtn.disabled = true;
-      els.result.textContent = '—';
-      els.conf.textContent = '—';
-      els.preCanvas.hidden = true;
-      els.toggleViewBtn.textContent = 'Show preprocessed';
-
-      try {
-        els.status.textContent = 'Loading image...';
-        const { img, usedProxy, displayUrl, tainted } = await loadImageWithFallbacks(fromUrl);
-        current.originalUrl = fromUrl;
-        current.displayUrl = displayUrl;
-        current.usingProxy = !!usedProxy;
-        current.tainted = !!tainted;
-        els.img.src = displayUrl;
-        els.usingUrl.textContent = current.originalUrl + (usedProxy ? ' (via proxy)' : '');
-
-        els.status.textContent = 'Preprocessing...';
-        let preDataUrl = '';
-        try {
-          preDataUrl = preprocessImage(img);
-          current.preDataUrl = preDataUrl;
-          els.toggleViewBtn.disabled = false;
-        } catch (e) {
-          if (e.message === 'TAINTED_CANVAS') {
-            // Fall back to using URL directly (may fail without CORS)
-            current.preDataUrl = '';
-          } else {
-            console.warn('Preprocess error', e);
-            current.preDataUrl = '';
-          }
-        }
-
-        els.status.textContent = 'Running OCR...';
-        const sourceForOCR = current.preDataUrl || current.displayUrl || current.originalUrl;
-        const data = await ocrImage(sourceForOCR);
-
-        let text = (data.text || '').trim();
-        // Clean up common Tesseract artifacts
-        text = text.replace(/[^\w]/g, '').trim();
-
-        els.result.textContent = text || '(no text)';
-        els.conf.textContent = Number.isFinite(data.confidence) ? `${data.confidence.toFixed(1)}%` : 'n/a';
-        els.solveAgainBtn.disabled = false;
-        els.copyBtn.disabled = !text;
-        els.status.textContent = 'Done';
-      } catch (e) {
-        console.error(e);
-        els.status.textContent = 'Error: ' + (e && e.message ? e.message : 'failed');
-        els.result.textContent = '(error)';
-        els.conf.textContent = 'n/a';
-      } finally {
-        setBusy(false);
-      }
-    }
-
-    // Toggle between original <img> and preprocessed <canvas>
-    function togglePreview() {
-      if (!current.preDataUrl) return;
-      const showingCanvas = !els.preCanvas.hidden;
-      els.preCanvas.hidden = showingCanvas;
-      els.toggleViewBtn.textContent = showingCanvas ? 'Show preprocessed' : 'Show original';
-      els.img.style.display = showingCanvas ? '' : 'none';
-    }
-
-    // Event wiring
-    els.loadBtn.addEventListener('click', () => {
-      const v = els.url.value.trim();
-      if (!v) return;
-      // Update URL bar to make the state shareable
-      const u = new URL(location.href);
-      u.searchParams.set('url', v);
-      history.replaceState({}, '', u);
-      // Start solving
-      solveFlow(v);
-    });
-
-    els.solveBtn.addEventListener('click', () => {
-      const v = els.url.value.trim();
-      if (v) solveFlow(v);
-    });
-
-    els.solveAgainBtn.addEventListener('click', () => {
-      const v = els.url.value.trim();
-      if (v) solveFlow(v);
-    });
-
-    els.copyBtn.addEventListener('click', async () => {
-      const t = els.result.textContent;
-      try { await navigator.clipboard.writeText(t); els.status.textContent = 'Copied to clipboard'; }
-      catch { els.status.textContent = 'Copy failed'; }
-    });
-
-    els.toggleViewBtn.addEventListener('click', togglePreview);
-
-    els.fileBtn.addEventListener('click', () => els.file.click());
-    els.file.addEventListener('change', () => {
-      const f = els.file.files?.[0];
-      if (!f) return;
-      const url = URL.createObjectURL(f);
-      els.url.value = ''; // clear url param since we use local blob
-      els.usingUrl.textContent = '(uploaded file)';
-      els.img.src = url;
-      solveFlow(url);
-    });
-
-    // Initialize: load from ?url or use sample
-    (async function init() {
-      const paramUrl = q.get('url') || '';
-      if (paramUrl) {
-        els.url.value = paramUrl;
-        els.solveBtn.disabled = false;
-        await solveFlow(paramUrl);
-      } else {
+        setStatus('Failed to load image (CORS or invalid URL). Using sample instead.');
         const sample = generateSampleCaptcha();
-        els.url.value = '';
-        els.usingUrl.textContent = '(default sample)';
-        els.img.src = sample.dataUrl;
-        els.solveBtn.disabled = false;
-        await solveFlow(sample.dataUrl);
+        img.src = sample.dataUrl;
+        img.onload = () => solveImageElement(img, abortSolve);
+      }
+    }
+
+    // Wire UI
+    $('loadBtn').addEventListener('click', () => {
+      const u = urlInput.value.trim();
+      if (!u) return;
+      const href = new URL(location.href);
+      href.searchParams.set('url', u);
+      history.replaceState({}, '', href);
+      displayAndSolve(u);
+    });
+    $('solveBtn').addEventListener('click', () => {
+      if (!img.src) return;
+      solveImageElement(img, abortSolve);
+    });
+    $('sampleBtn').addEventListener('click', () => {
+      const sample = generateSampleCaptcha();
+      urlInput.value = sample.dataUrl;
+      const href = new URL(location.href);
+      href.searchParams.delete('url');
+      history.replaceState({}, '', href);
+      displayAndSolve(sample.dataUrl);
+    });
+    $('togglePreview').addEventListener('click', () => {
+      previewCanvas.classList.toggle('hidden');
+    });
+    $('downloadCanvas').addEventListener('click', () => {
+      const a = document.createElement('a');
+      a.href = previewCanvas.toDataURL('image/png');
+      a.download = 'processed.png';
+      a.click();
+    });
+
+    // Initialize
+    (async function init() {
+      const paramUrl = qs.get('url');
+      if (paramUrl) {
+        urlInput.value = paramUrl;
+        displayAndSolve(paramUrl);
+      } else {
+        const sample = generateSampleCaptcha('X7G2Q');
+        urlInput.value = sample.dataUrl;
+        displayAndSolve(sample.dataUrl);
       }
     })();
   </script>

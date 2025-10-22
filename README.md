@@ -1,42 +1,45 @@
-# Captcha Solver (Client-side OCR)
+# Captcha Solver (Client-side, Browser)
 
-MIT-licensed, single-page web app that solves simple captchas from a URL query parameter using in-browser OCR (Tesseract.js). Includes lightweight image preprocessing to improve recognition accuracy and aims to display the solved text within 15 seconds.
+MIT-licensed, single-page web app that loads a captcha image from a URL (`?url=...`), preprocesses it in the browser, and solves it using Tesseract.js (WASM). No server required.
 
 ## Overview
 
-- Input source: Captcha image specified via the url query parameter (?url=...).
-- Default sample: A built-in SVG captcha is used if no URL is provided.
-- OCR engine: Tesseract.js running entirely in the browser; no server required.
-- Preprocessing: Grayscale and Otsu thresholding to produce a clean, binarized image for OCR.
-- UX: Displays the captcha image, preprocessed preview, progress logs, recognized text, confidence, and elapsed time.
-
-Caveat: OCR quality depends on the captcha’s complexity. Highly distorted or noisy captchas may not be solvable reliably.
+- URL parameter: pass your captcha image at `?url=https://.../image.png`
+- Default: if no URL is provided, the page generates a sample captcha locally
+- Processing: grayscale + Otsu threshold + light morphology to denoise
+- OCR: Tesseract.js (WASM) with character whitelist and single-line PSM
+- Privacy: runs fully in your browser
+- Performance: aims to display the solved text within ~15 seconds on typical connections/devices
 
 ## Setup
 
-No build steps required.
+No build step required.
 
-1. Download or clone the repository contents.
-2. Ensure the following files exist at project root:
-   - index.html
-   - README.md
+1. Download the two files in this repository.
+2. Open `index.html` in a modern browser with internet access (for Tesseract.js assets).
+   - Tesseract worker/core and language data are loaded from public CDNs.
 
-License: MIT (see bottom of this README).
+License: MIT (see below).
 
 ## Usage
 
-- Open index.html directly in a modern browser, or serve it via any static file server.
-- To solve a specific captcha image, pass its URL via the url query parameter:
-  - Example: file:///path/to/index.html?url=https://example.com/captcha.png
-  - The page shows the exact URL being used, the image preview, and the recognized text.
+- Open `index.html`.
+- To use a remote captcha:
+  - Append the query string parameter `url`, for example:
+    - `index.html?url=https://your.cdn.example/captcha.png`
+  - The app will:
+    - Fetch the image (with CORS fallbacks),
+    - Display the original image,
+    - Preprocess it on a canvas,
+    - Run OCR and show the solved text.
+- Interact via the UI:
+  - Paste a URL and click “Load & Solve”.
+  - Or choose a local image file.
+  - Click “Re-run Solve” to retry with the current image.
 
-Tips:
-
-- For best results, ensure the captcha image server permits CORS (Cross-Origin Resource Sharing). If the remote server blocks CORS, OCR may not access the pixels. Workarounds:
-  - Download the captcha image locally and open via a file:// or same-origin URL.
-  - Use a CORS-enabled endpoint or host the image with appropriate Access-Control-Allow-Origin headers.
-- The app auto-loads and auto-solves on page open if url is present.
-- Click Reset to revert to the built-in sample and solve again.
+Notes:
+- If the remote server blocks CORS, the app attempts to fetch through safe, public CORS proxies.
+- OCR accuracy depends on captcha complexity and obfuscation; classic simple captchas work best.
 
 ## License
 

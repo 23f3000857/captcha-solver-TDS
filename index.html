@@ -1,263 +1,239 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>Captcha Solver (Tesseract.js)</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta charset="utf-8" />
+  <title>Captcha Solver (Client-side)</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
   <style>
     :root {
       color-scheme: light dark;
       --bg: #0b0c10;
-      --fg: #c5c6c7;
-      --accent: #66fcf1;
-      --muted: #7f8c8d;
+      --fg: #cfd8dc;
+      --muted: #90a4ae;
+      --accent: #4fc3f7;
+      --ok: #66bb6a;
+      --warn: #ffa726;
+      --err: #ef5350;
       --card: #1f2833;
-      --border: #2c3e50;
-      --good: #2ecc71;
-      --warn: #f1c40f;
-      --bad: #e74c3c;
+      --border: #2b3945;
     }
-    html, body {
-      margin: 0; padding: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji"; 
-      background: var(--bg); color: var(--fg);
-    }
-    .container {
-      max-width: 980px; margin: 0 auto; padding: 24px 16px 64px;
-    }
-    header {
-      display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap;
-    }
-    h1 { font-size: 1.6rem; margin: 0; }
-    .card {
-      background: var(--card); border: 1px solid var(--border); border-radius: 12px;
-      padding: 16px; margin-top: 16px;
-    }
-    label { font-weight: 600; display: block; margin-bottom: 6px; }
-    input[type="url"], input[type="text"] {
-      width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--border);
-      background: transparent; color: var(--fg);
-    }
-    .row { display: grid; grid-template-columns: 1fr; gap: 12px; }
-    @media (min-width: 800px) {
-      .row { grid-template-columns: 2.2fr 1.8fr; }
-    }
-    .actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
-    button {
-      appearance: none; border: 1px solid var(--border); background: transparent; color: var(--fg);
-      padding: 10px 14px; border-radius: 10px; cursor: pointer; font-weight: 600;
-    }
-    button.primary { background: var(--accent); color: #000; border-color: transparent; }
-    button:disabled { opacity: 0.6; cursor: not-allowed; }
-    .muted { color: var(--muted); font-size: 0.95rem; }
-    .meta {
-      display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 8px; margin-top: 8px;
-    }
-    .kv { background: rgba(255,255,255,0.03); border: 1px dashed var(--border); border-radius: 10px; padding: 8px 10px; overflow: hidden; }
-    .kv .k { color: var(--muted); font-size: 0.85rem; }
-    .kv .v { font-weight: 700; word-break: break-all; }
-    .preview {
-      display: grid; grid-template-columns: 1fr; gap: 12px;
-    }
-    .imgWrap { background: #fff; border-radius: 8px; overflow: auto; border: 1px solid var(--border); display: grid; place-items: center; padding: 8px; }
-    .imgWrap img, .imgWrap canvas { max-width: 100%; image-rendering: pixelated; }
-    .status {
-      padding: 8px 10px; border-radius: 10px; background: rgba(255,255,255,0.05); border: 1px solid var(--border);
-      display: flex; justify-content: space-between; align-items: center; gap: 10px;
-    }
-    .status .chip { padding: 4px 8px; border-radius: 999px; font-weight: 700; }
-    .chip.ok { background: rgba(46, 204, 113, 0.15); color: var(--good); border: 1px solid rgba(46, 204, 113, 0.4); }
-    .chip.warn { background: rgba(241, 196, 15, 0.15); color: var(--warn); border: 1px solid rgba(241, 196, 15, 0.4); }
-    .chip.err { background: rgba(231, 76, 60, 0.15); color: var(--bad); border: 1px solid rgba(231, 76, 60, 0.4); }
-    .logs {
-      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-      background: #0a0a0a; color: #bdbdbd; border-radius: 10px; padding: 10px; border: 1px solid #191919; height: 180px; overflow: auto;
-    }
-    .small { font-size: 0.85rem; }
-    footer { margin-top: 32px; color: var(--muted); }
-    a, a:visited { color: var(--accent); text-decoration: none; }
-    .hidden { display: none !important; }
+    html, body { margin: 0; height: 100%; font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji"; }
+    body { background: var(--bg); color: var(--fg); display: grid; place-items: start center; padding: 20px; }
+    .container { width: min(100%, 940px); display: grid; gap: 16px; }
+    header { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+    h1 { font-size: 1.25rem; margin: 0; font-weight: 700; letter-spacing: .2px; }
+    .small { color: var(--muted); font-size: 0.9rem; }
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 16px; }
+    .row { display: grid; gap: 10px; grid-template-columns: 1fr auto; align-items: center; }
+    input[type="url"] { width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--border); background: transparent; color: var(--fg); outline: none; }
+    input[type="url"]::placeholder { color: var(--muted); }
+    button { padding: 10px 14px; border-radius: 10px; border: 1px solid var(--border); background: #0f2942; color: #e3f2fd; cursor: pointer; font-weight: 600; }
+    button:disabled { opacity: .6; cursor: not-allowed; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .grid .card { height: 100%; }
+    .preview { display: grid; gap: 10px; }
+    .img-wrap { background: #111; border-radius: 8px; overflow: hidden; display: grid; place-items: center; border: 1px solid var(--border); min-height: 220px; }
+    img, canvas { max-width: 100%; height: auto; display: block; }
+    .meta { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; justify-content: space-between; }
+    .pill { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; background: #0d2130; color: #b3e5fc; border: 1px solid var(--border); border-radius: 999px; padding: 6px 10px; }
+    .status { font-size: 0.95rem; }
+    .status.ok { color: var(--ok); }
+    .status.warn { color: var(--warn); }
+    .status.err { color: var(--err); }
+    progress { width: 100%; height: 10px; border-radius: 10px; }
+    .footer { color: var(--muted); font-size: 0.85rem; text-align: center; }
+    .row-tools { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    .hint { color: var(--muted); font-size: 0.85rem; }
+    .output { font-size: 1.2rem; font-weight: 700; letter-spacing: 1px; }
+    .hidden { display: none; }
+    .kbd { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; background: #0d2130; border: 1px solid var(--border); color: #e1f5fe; padding: 0 6px; border-radius: 6px; }
+    .tight { margin: 0; }
+    @media (max-width: 860px) { .grid { grid-template-columns: 1fr; } }
   </style>
 </head>
 <body>
   <div class="container">
     <header>
-      <h1>Captcha Solver</h1>
-      <div class="muted small">Client-side OCR using Tesseract.js</div>
+      <div>
+        <h1>Captcha Solver</h1>
+        <div class="small">Pass an image URL via ?url=... or use the default sample. Solves on-device within ~15 seconds.</div>
+      </div>
+      <div class="pill">MIT License</div>
     </header>
 
-    <div class="card">
-      <label for="urlInput">Captcha image URL (?url=...)</label>
-      <input id="urlInput" type="url" placeholder="https://example.com/captcha.png" />
-      <div class="actions">
-        <button id="loadBtn">Load</button>
-        <button id="solveBtn" class="primary">Solve</button>
-        <button id="resetBtn">Reset</button>
+    <section class="card">
+      <div class="row">
+        <input id="urlInput" type="url" placeholder="https://example.com/captcha.png" spellcheck="false" />
+        <button id="loadBtn">Load & Solve</button>
       </div>
+      <div class="row-tools">
+        <input id="fileInput" type="file" accept="image/*" />
+        <button id="solveBtn">Re-run Solve</button>
+        <span class="hint">Tip: Drag in a local image file or paste URL, then click Load & Solve.</span>
+      </div>
+    </section>
+
+    <section class="grid">
+      <div class="card preview">
+        <div class="meta">
+          <div>
+            <strong>Original Captcha</strong>
+            <div id="srcInfo" class="small"></div>
+          </div>
+          <div class="pill" id="imgSizePill">—</div>
+        </div>
+        <div class="img-wrap" id="imgWrap">
+          <img id="captchaImg" alt="captcha preview" />
+        </div>
+      </div>
+
+      <div class="card preview">
+        <div class="meta">
+          <div>
+            <strong>Processed</strong>
+            <div class="small">Preprocessed for OCR (grayscale + threshold)</div>
+          </div>
+          <div class="pill" id="procSizePill">—</div>
+        </div>
+        <div class="img-wrap">
+          <canvas id="procCanvas"></canvas>
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
       <div class="meta">
-        <div class="kv">
-          <div class="k">Current URL</div>
-          <div class="v" id="currentUrl">—</div>
+        <div>
+          <strong>Solver</strong>
+          <div class="small">Powered by Tesseract.js (client-side WASM)</div>
         </div>
-        <div class="kv">
-          <div class="k">Status</div>
-          <div class="v" id="statusText">Idle</div>
-        </div>
-        <div class="kv">
-          <div class="k">Result</div>
-          <div class="v" id="resultText">—</div>
-        </div>
-        <div class="kv">
-          <div class="k">Confidence</div>
-          <div class="v" id="confidenceText">—</div>
-        </div>
-        <div class="kv">
-          <div class="k">Elapsed</div>
-          <div class="v" id="elapsedText">0.00s</div>
-        </div>
+        <div class="pill" id="timerPill">—</div>
       </div>
+      <div>
+        <progress id="progress" max="1" value="0"></progress>
+        <div class="small" id="progressText">Ready.</div>
+      </div>
+      <div>
+        <p class="tight small">Result</p>
+        <div class="output" id="resultText">—</div>
+        <div id="statusText" class="status"></div>
+      </div>
+    </section>
+
+    <div class="footer">
+      Pass a URL with the "url" query parameter, for example: <span class="kbd">?url=https://your.cdn/captcha.png</span>.
     </div>
-
-    <div class="row">
-      <div class="card preview">
-        <div class="status">
-          <div>
-            <div class="small muted">Original</div>
-            <strong>Captcha Preview</strong>
-          </div>
-          <span id="imgChip" class="chip warn">Waiting</span>
-        </div>
-        <div class="imgWrap"><img id="captchaImg" alt="captcha" crossorigin="anonymous" referrerpolicy="no-referrer"></div>
-        <div class="small muted">Tip: Ensure the image server supports CORS for OCR. If not, download and open locally, or use a CORS-enabled URL.</div>
-      </div>
-
-      <div class="card preview">
-        <div class="status">
-          <div>
-            <div class="small muted">Preprocessed</div>
-            <strong>Binary Image</strong>
-          </div>
-          <span id="prepChip" class="chip warn">Pending</span>
-        </div>
-        <div class="imgWrap"><canvas id="prepCanvas"></canvas></div>
-        <div class="logs" id="logs"></div>
-      </div>
-    </div>
-
-    <footer class="small">
-      MIT License. No data leaves your browser. This demo uses Tesseract.js and performs optional preprocessing (grayscale + Otsu threshold) for improved accuracy.
-    </footer>
   </div>
 
-  <script src="https://unpkg.com/tesseract.js@v5.1.0/dist/tesseract.min.js"></script>
+  <script src="https://unpkg.com/tesseract.js@v5.0.4/dist/tesseract.min.js"></script>
   <script>
-    // Default inline SVG captcha (safe local data URL)
-    const defaultCaptchaText = "X7Y9";
-    const defaultSvg = `
-      <svg xmlns="http://www.w3.org/2000/svg" width="220" height="90">
-        <defs>
-          <filter id="s" x="-10%" y="-10%" width="120%" height="120%">
-            <feOffset dx="1" dy="1"/><feGaussianBlur stdDeviation="0.4"/>
-          </filter>
-        </defs>
-        <rect width="100%" height="100%" fill="white" />
-        <g font-family="monospace" font-weight="700" font-size="54" fill="#111">
-          <text x="18" y="60" filter="url(#s)">${defaultCaptchaText}</text>
-        </g>
-        <g stroke="#888" stroke-width="1" opacity="0.35">
-          <line x1="0" y1="10" x2="220" y2="12"/>
-          <line x1="0" y1="40" x2="220" y2="42"/>
-          <line x1="0" y1="70" x2="220" y2="68"/>
-        </g>
-        <g fill="#aaa" opacity="0.2">
-          <circle cx="50" cy="20" r="3"/>
-          <circle cx="120" cy="50" r="2"/>
-          <circle cx="180" cy="30" r="2.5"/>
-        </g>
-      </svg>`;
-    const defaultUrl = "data:image/svg+xml;utf8," + encodeURIComponent(defaultSvg);
-
-    const dom = {
-      urlInput: document.getElementById('urlInput'),
-      loadBtn: document.getElementById('loadBtn'),
-      solveBtn: document.getElementById('solveBtn'),
-      resetBtn: document.getElementById('resetBtn'),
-      currentUrl: document.getElementById('currentUrl'),
-      statusText: document.getElementById('statusText'),
-      resultText: document.getElementById('resultText'),
-      confidenceText: document.getElementById('confidenceText'),
-      elapsedText: document.getElementById('elapsedText'),
-      img: document.getElementById('captchaImg'),
-      imgChip: document.getElementById('imgChip'),
-      prepChip: document.getElementById('prepChip'),
-      prepCanvas: document.getElementById('prepCanvas'),
-      logs: document.getElementById('logs'),
-    };
-
-    const qs = new URLSearchParams(location.search);
-    const initialUrl = qs.get('url') || defaultUrl;
-
-    let workerPromise = null;
-    let solving = false;
-    let startTime = 0;
-
-    function setStatus(text) { dom.statusText.textContent = text; }
-    function setResult(text) { dom.resultText.textContent = text || '—'; }
-    function setConf(v) { dom.confidenceText.textContent = (v || v === 0) ? `${v.toFixed(1)}%` : '—'; }
-    function setElapsed() {
-      if (!startTime) return;
-      const dt = (performance.now() - startTime) / 1000;
-      dom.elapsedText.textContent = `${dt.toFixed(2)}s`;
-    }
-    function log(...args) {
-      const line = args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' ');
-      dom.logs.textContent += (dom.logs.textContent ? "\n" : "") + line;
-      dom.logs.scrollTop = dom.logs.scrollHeight;
-      // also console
-      console.log(...args);
-    }
-    function setChip(el, type, text) {
-      el.className = `chip ${type}`;
-      el.textContent = text;
+    // Utility: querystring
+    function getParam(name) {
+      const u = new URL(location.href);
+      return u.searchParams.get(name);
     }
 
-    function updateUrl(url) {
-      dom.urlInput.value = url;
-      dom.currentUrl.textContent = url;
-      try {
-        const u = new URL(location.href);
-        u.searchParams.set('url', url);
-        history.replaceState(null, '', u.toString());
-      } catch {}
-    }
+    // Default sample: generated client-side to avoid external dependency
+    function generateSampleCaptcha(text = "A7B3") {
+      const cw = 220, ch = 90;
+      const c = document.createElement('canvas');
+      c.width = cw; c.height = ch;
+      const ctx = c.getContext('2d');
 
-    // Preprocessing utilities
-    function drawToCanvas(img) {
-      const c = dom.prepCanvas;
-      const ctx = c.getContext('2d', { willReadFrequently: true });
-      c.width = img.naturalWidth || img.width;
-      c.height = img.naturalHeight || img.height;
-      ctx.drawImage(img, 0, 0);
-      return c;
-    }
-    function toGrayscale(imgData) {
-      const d = imgData.data;
-      for (let i = 0; i < d.length; i += 4) {
-        const r = d[i], g = d[i+1], b = d[i+2];
-        const y = (0.299*r + 0.587*g + 0.114*b) | 0;
-        d[i] = d[i+1] = d[i+2] = y;
+      // background noise
+      ctx.fillStyle = '#f2f6ff';
+      ctx.fillRect(0,0,cw,ch);
+      for (let i=0;i<20;i++){
+        ctx.strokeStyle = `rgba(${120+Math.random()*60|0},${140+Math.random()*60|0},${200+Math.random()*40|0},0.35)`;
+        ctx.beginPath();
+        ctx.moveTo(Math.random()*cw, Math.random()*ch);
+        ctx.lineTo(Math.random()*cw, Math.random()*ch);
+        ctx.stroke();
       }
-      return imgData;
+
+      // text
+      ctx.font = "48px Impact, Arial Black, sans-serif";
+      ctx.setTransform(1, 0.05, -0.1, 1, 0, 0);
+      ctx.fillStyle = '#0a0f1a';
+      const metrics = ctx.measureText(text);
+      const tw = metrics.width;
+      ctx.fillText(text, ((cw - tw)/2), 60);
+
+      // crossing lines
+      ctx.setTransform(1,0,0,1,0,0);
+      ctx.strokeStyle = "rgba(0,0,0,0.25)";
+      ctx.lineWidth = 2;
+      for (let i=0;i<3;i++){
+        ctx.beginPath();
+        ctx.moveTo(0, 20 + i*20 + Math.random()*10);
+        ctx.bezierCurveTo(50, 10+Math.random()*70, 170, 30+Math.random()*60, cw, 15+i*20+Math.random()*20);
+        ctx.stroke();
+      }
+      return c.toDataURL('image/png');
     }
-    function otsuThreshold(grayData) {
-      // grayData: ImageData with R=G=B
-      const d = grayData.data;
-      const hist = new Uint32Array(256);
-      const total = d.length / 4;
-      for (let i = 0; i < d.length; i += 4) hist[d[i]]++;
+
+    // Fetch image as Blob with fallbacks
+    async function fetchAsBlobWithFallback(url, signal) {
+      const tryFetch = async (tryUrl) => {
+        const res = await fetch(tryUrl, { mode: 'cors', redirect: 'follow', signal });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return await res.blob();
+      };
+      const attempts = [
+        url,
+        'https://cors.isomorphic-git.org/' + url,
+        'https://api.allorigins.win/raw?url=' + encodeURIComponent(url)
+      ];
+      let lastErr = null;
+      for (const u of attempts) {
+        try { return await tryFetch(u); } catch (e) { lastErr = e; }
+      }
+      throw lastErr || new Error('Failed to fetch image');
+    }
+
+    // Load image from blob to HTMLImageElement
+    function loadImageFromBlob(blob) {
+      return new Promise((resolve, reject) => {
+        const img = new Image();
+        const url = URL.createObjectURL(blob);
+        img.onload = () => {
+          resolve({ img, objectUrl: url });
+        };
+        img.onerror = (e) => reject(new Error('Image decode failed'));
+        img.src = url;
+      });
+    }
+
+    // Preprocess: grayscale + Otsu threshold + small morphology
+    function preprocessImageToCanvas(img, opts = {}) {
+      const maxDim = 600;
+      const scale = Math.min(1, maxDim / Math.max(img.naturalWidth, img.naturalHeight));
+      const w = Math.max(1, Math.round(img.naturalWidth * scale));
+      const h = Math.max(1, Math.round(img.naturalHeight * scale));
+      const c = document.getElementById('procCanvas');
+      c.width = w; c.height = h;
+      const ctx = c.getContext('2d', { willReadFrequently: true });
+      ctx.drawImage(img, 0, 0, w, h);
+
+      const imgData = ctx.getImageData(0, 0, w, h);
+      const data = imgData.data;
+
+      // grayscale
+      const gray = new Uint8ClampedArray(w*h);
+      for (let i=0, j=0; i<data.length; i+=4, j++) {
+        const r = data[i], g = data[i+1], b = data[i+2];
+        gray[j] = (0.299*r + 0.587*g + 0.114*b) | 0;
+      }
+
+      // Otsu threshold
+      const hist = new Array(256).fill(0);
+      for (let i=0;i<gray.length;i++) hist[gray[i]]++;
+      const total = gray.length;
       let sum = 0;
-      for (let t = 0; t < 256; t++) sum += t * hist[t];
-      let sumB = 0, wB = 0, wF = 0, varMax = 0, threshold = 127;
-      for (let t = 0; t < 256; t++) {
+      for (let t=0;t<256;t++) sum += t*hist[t];
+      let sumB = 0, wB = 0, wF = 0;
+      let varMax = 0, threshold = 127;
+      for (let t=0;t<256;t++) {
         wB += hist[t];
         if (wB === 0) continue;
         wF = total - wB;
@@ -265,218 +241,250 @@
         sumB += t * hist[t];
         const mB = sumB / wB;
         const mF = (sum - sumB) / wF;
-        const varBetween = wB * wF * (mB - mF) * (mB - mF);
-        if (varBetween > varMax) {
-          varMax = varBetween;
-          threshold = t;
-        }
+        const between = wB * wF * (mB - mF) * (mB - mF);
+        if (between > varMax) { varMax = between; threshold = t; }
       }
-      return threshold;
-    }
-    function applyThreshold(imgData, t, invert=false) {
-      const d = imgData.data;
-      for (let i = 0; i < d.length; i += 4) {
-        const v = d[i]; // gray
-        let on = v <= t;
-        if (invert) on = !on;
-        const px = on ? 0 : 255; // black text on white background by default
-        d[i] = d[i+1] = d[i+2] = px;
-        d[i+3] = 255;
+
+      // binarize
+      const bin = new Uint8ClampedArray(w*h);
+      for (let i=0;i<gray.length;i++) bin[i] = gray[i] > threshold ? 255 : 0;
+
+      // determine if inversion helps (assume text should be dark)
+      const white = bin.reduce((acc,v)=>acc + (v===255), 0);
+      const black = total - white;
+      let inverted = false;
+      if (white < black) {
+        // invert to make background white
+        for (let i=0;i<bin.length;i++) bin[i] = 255 - bin[i];
+        inverted = true;
       }
-      return imgData;
+
+      // simple morphology: opening (erode then dilate) to remove specks
+      const eroded = morph(bin, w, h, 'erode');
+      const dilated = morph(eroded, w, h, 'dilate');
+
+      // write back to canvas as black text on white background
+      for (let i=0, j=0; i<data.length; i+=4, j++) {
+        const v = dilated[j];
+        data[i] = data[i+1] = data[i+2] = v;
+        data[i+3] = 255;
+      }
+      ctx.putImageData(imgData, 0, 0);
+      return { canvas: c, width: w, height: h, inverted, threshold };
     }
 
-    async function ensureWorker() {
-      if (!workerPromise) {
-        workerPromise = (async () => {
-          setStatus('Loading OCR engine...');
-          log('[init] Loading Tesseract worker and language data...');
-          const worker = await Tesseract.createWorker({
-            logger: m => {
-              if (m.status) log(`[tess] ${m.status} ${m.progress ? (Math.round(m.progress * 100) + '%') : ''}`);
-            },
-            // Use public CDNs for core and lang (eng)
-            langPath: 'https://tessdata.projectnaptha.com/4.0.0',
-            // corePath auto-resolves via CDN
-          });
-          await worker.loadLanguage('eng');
-          await worker.initialize('eng');
-          // Defaults optimized for single-line captchas
-          await worker.setParameters({
-            tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789',
-            tessedit_pageseg_mode: '7', // single text line
-          });
-          log('[init] Worker ready');
-          setStatus('OCR ready');
-          return worker;
-        })();
+    function morph(src, w, h, type = 'erode') {
+      const dst = new Uint8ClampedArray(w*h);
+      const isErode = type === 'erode';
+      for (let y=0;y<h;y++){
+        for (let x=0;x<w;x++){
+          let agg = isErode ? 255 : 0;
+          for (let dy=-1; dy<=1; dy++){
+            for (let dx=-1; dx<=1; dx++){
+              const nx = x+dx, ny = y+dy;
+              if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
+              const v = src[ny*w + nx];
+              if (isErode) { if (v === 0) { agg = 0; dx=dy=2; } }
+              else { if (v === 255) { agg = 255; dx=dy=2; } }
+            }
+          }
+          dst[y*w + x] = agg;
+        }
       }
+      return dst;
+    }
+
+    // Tesseract worker (singleton)
+    let workerPromise = null;
+    async function getWorker() {
+      if (workerPromise) return workerPromise;
+      workerPromise = (async () => {
+        const worker = await Tesseract.createWorker({
+          workerPath: 'https://unpkg.com/tesseract.js@v5.0.4/dist/worker.min.js',
+          corePath: 'https://unpkg.com/tesseract.js-core@v5.0.4/tesseract-core.wasm.js',
+          langPath: 'https://tessdata.projectnaptha.com/4.0.0',
+          logger: m => {
+            if (m.status) {
+              updateProgress(m.progress || 0, `${m.status} ${(m.progress*100).toFixed(0)}%`);
+            }
+          }
+        });
+        await worker.loadLanguage('eng');
+        await worker.initialize('eng');
+        // single line/word mode works well for captchas
+        await worker.setParameters({
+          tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789',
+          classify_bln_numeric_mode: '0',
+          user_defined_dpi: '200',
+          tessedit_pageseg_mode: '7' // treat image as a single text line
+        });
+        return worker;
+      })();
       return workerPromise;
     }
 
-    function getAlnum(s) {
-      return (s || '').replace(/[^A-Za-z0-9]/g, '');
+    // UI elements
+    const urlInput = document.getElementById('urlInput');
+    const loadBtn = document.getElementById('loadBtn');
+    const solveBtn = document.getElementById('solveBtn');
+    const fileInput = document.getElementById('fileInput');
+    const imgEl = document.getElementById('captchaImg');
+    const srcInfo = document.getElementById('srcInfo');
+    const imgSizePill = document.getElementById('imgSizePill');
+    const procSizePill = document.getElementById('procSizePill');
+    const resultText = document.getElementById('resultText');
+    const statusText = document.getElementById('statusText');
+    const progressEl = document.getElementById('progress');
+    const progressText = document.getElementById('progressText');
+    const timerPill = document.getElementById('timerPill');
+
+    let currentObjectUrl = null;
+    let currentBlob = null;
+    let lastStartTs = 0;
+
+    function resetUI() {
+      resultText.textContent = '—';
+      statusText.textContent = '';
+      statusText.className = 'status';
+      updateProgress(0, 'Ready.');
+      timerPill.textContent = '—';
     }
 
-    function plausible(text) {
-      const t = getAlnum(text);
-      return t.length >= 3 && t.length <= 10;
-    }
-
-    async function recognizeWith(worker, source, params={}) {
-      if (params.psm) {
-        await worker.setParameters({ tessedit_pageseg_mode: String(params.psm) });
+    function updateProgress(v, text) {
+      if (Number.isFinite(v)) {
+        progressEl.value = Math.max(0, Math.min(1, v));
       }
-      if (params.whitelist) {
-        await worker.setParameters({ tessedit_char_whitelist: params.whitelist });
-      }
-      const { data } = await worker.recognize(source);
-      return data;
+      if (text) progressText.textContent = text;
     }
 
-    async function preprocessAndShow(imgEl) {
+    function humanMs(ms) {
+      return (ms/1000).toFixed(2) + 's';
+    }
+
+    function setStatus(kind, text) {
+      statusText.className = 'status ' + (kind || '');
+      statusText.textContent = text || '';
+    }
+
+    // Load from URL (with CORS fallbacks)
+    async function loadFromUrl(url) {
+      resetUI();
+      const ctrl = new AbortController();
+      const timeout = setTimeout(() => ctrl.abort(), 15000); // 15s fetch timeout
       try {
-        const canvas = drawToCanvas(imgEl);
-        const ctx = canvas.getContext('2d', { willReadFrequently: true });
-        let data = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        data = toGrayscale(data);
-        const t = otsuThreshold(data);
-        data = applyThreshold(data, t, false); // black text on white
-        ctx.putImageData(data, 0, 0);
-        setChip(dom.prepChip, 'ok', 'Thresholded');
-        log(`[prep] Otsu threshold = ${t}`);
-        return canvas;
+        updateProgress(0, 'Fetching image...');
+        const blob = await fetchAsBlobWithFallback(url, ctrl.signal);
+        currentBlob = blob;
+        if (currentObjectUrl) URL.revokeObjectURL(currentObjectUrl);
+        const { img, objectUrl } = await loadImageFromBlob(blob);
+        currentObjectUrl = objectUrl;
+        imgEl.src = objectUrl;
+        imgEl.onload = () => {}; // keep object URL assigned
+
+        // Update meta
+        srcInfo.textContent = url;
+        imgSizePill.textContent = `${img.naturalWidth}×${img.naturalHeight}px`;
+
+        // Preprocess and immediately solve
+        await preprocessAndSolve(img);
       } catch (e) {
-        setChip(dom.prepChip, 'err', 'Preprocess failed');
-        log('[prep] Failed:', e.message || e);
-        return null;
-      }
-    }
-
-    async function solve() {
-      if (solving) return;
-      solving = true;
-      startTime = performance.now();
-      dom.elapsedText.textContent = '0.00s';
-      setResult('—');
-      setConf(null);
-      setStatus('Solving...');
-      setChip(dom.imgChip, 'ok', 'Loaded');
-      setChip(dom.prepChip, 'warn', 'Pending');
-      dom.logs.textContent = '';
-      const elapsedTicker = setInterval(setElapsed, 100);
-
-      try {
-        const worker = await ensureWorker();
-        const prepCanvas = await preprocessAndShow(dom.img);
-
-        const attempts = [];
-        if (prepCanvas) {
-          attempts.push({ src: prepCanvas, psm: 7, label: 'threshold psm7' });
-          attempts.push({ src: prepCanvas, psm: 8, label: 'threshold psm8' });
-        }
-        // Fallback to original if preprocessing failed or not good
-        attempts.push({ src: dom.img.src, psm: 7, label: 'original psm7' });
-        attempts.push({ src: dom.img.src, psm: 8, label: 'original psm8' });
-
-        const deadline = performance.now() + 15000; // 15 seconds
-        let best = { text: '', conf: 0, raw: null };
-        for (let i = 0; i < attempts.length; i++) {
-          if (performance.now() > deadline) { log('[solve] Deadline reached'); break; }
-          const a = attempts[i];
-          log(`[solve] Attempt ${i+1}/${attempts.length}: ${a.label}`);
-          try {
-            const data = await recognizeWith(worker, a.src, { psm: a.psm });
-            const text = getAlnum(data.text);
-            const conf = data.confidence || 0;
-            log(`[solve] -> "${text}" (conf ${conf.toFixed(1)}%)`);
-            if (conf > best.conf) {
-              best = { text, conf, raw: data };
-            }
-            if (plausible(text) && conf >= 50) {
-              best = { text, conf, raw: data };
-              log('[solve] Early accept');
-              break;
-            }
-          } catch (e) {
-            log(`[solve] Attempt failed: ${e.message || e}`);
-          }
-        }
-
-        const elapsed = (performance.now() - startTime) / 1000;
-        setResult(best.text || '(no result)');
-        setConf(best.conf || 0);
-        setStatus(best.text ? 'Solved' : 'No result');
-        log(`[done] Finished in ${elapsed.toFixed(2)}s`);
-      } catch (err) {
-        setStatus('Error');
-        setChip(dom.prepChip, 'err', 'Error');
-        log('[error]', err.message || err);
+        setStatus('err', 'Failed to load: ' + (e.message || e));
+        updateProgress(0, 'Load failed');
       } finally {
-        clearInterval(elapsedTicker);
-        setElapsed();
-        solving = false;
+        clearTimeout(timeout);
       }
     }
 
-    async function loadImage(url) {
-      return new Promise((resolve, reject) => {
-        dom.img.onload = () => resolve(true);
-        dom.img.onerror = (e) => reject(e);
-        dom.img.src = url;
-      });
-    }
-
-    function setUIState(loading) {
-      dom.loadBtn.disabled = loading;
-      dom.solveBtn.disabled = loading;
-      dom.resetBtn.disabled = loading;
-    }
-
-    async function initLoad(url) {
-      setUIState(true);
-      setStatus('Loading image...');
-      setResult('—'); setConf(null);
-      setChip(dom.imgChip, 'warn', 'Loading');
-      setChip(dom.prepChip, 'warn', 'Pending');
-      dom.logs.textContent = '';
-      dom.prepCanvas.width = dom.prepCanvas.height = 0;
-
+    async function preprocessAndSolve(img) {
       try {
-        updateUrl(url);
-        await loadImage(url);
-        setChip(dom.imgChip, 'ok', 'Loaded');
-        setStatus('Image ready');
+        updateProgress(0.02, 'Preprocessing...');
+        const proc = preprocessImageToCanvas(img);
+        procSizePill.textContent = `${proc.width}×${proc.height}px`;
+
+        // Solve with Tesseract
+        const worker = await getWorker();
+
+        lastStartTs = performance.now();
+        const solveTimeoutMs = 15000; // 15s end-to-end expectation
+        const abortPromise = new Promise((_, reject) => {
+          setTimeout(() => reject(new Error('Timeout exceeded')), solveTimeoutMs);
+        });
+
+        const recognizePromise = (async () => {
+          const { data } = await worker.recognize(proc.canvas);
+          return data;
+        })();
+
+        updateProgress(0.05, 'Running OCR...');
+        const data = await Promise.race([recognizePromise, abortPromise]);
+
+        const raw = (data.text || '').trim();
+        const cleaned = raw.replace(/[^0-9a-zA-Z]/g, '');
+        resultText.textContent = cleaned || raw || '—';
+
+        const elapsed = performance.now() - lastStartTs;
+        timerPill.textContent = `Solved in ${humanMs(elapsed)}`;
+
+        if (cleaned && cleaned.length > 0) {
+          setStatus('ok', 'Solved successfully');
+        } else {
+          setStatus('warn', 'No confident text detected (try different threshold or image)');
+        }
+        updateProgress(1, 'Done');
       } catch (e) {
-        setChip(dom.imgChip, 'err', 'Load failed');
-        setStatus('Image failed to load');
-        log('[img] Load error:', e.message || e);
-      } finally {
-        setUIState(false);
+        setStatus('err', 'Solve failed: ' + (e.message || e));
+        updateProgress(0, 'Error');
       }
     }
 
-    // Wire up UI
-    dom.loadBtn.addEventListener('click', async () => {
-      await initLoad(dom.urlInput.value.trim());
-    });
-    dom.solveBtn.addEventListener('click', async () => {
-      if (!dom.img.src) return;
-      await solve();
-    });
-    dom.resetBtn.addEventListener('click', async () => {
-      await initLoad(defaultUrl);
-      await solve();
+    // Event: Load & Solve button
+    loadBtn.addEventListener('click', async () => {
+      const v = urlInput.value.trim();
+      if (!v) return;
+      loadBtn.disabled = true;
+      solveBtn.disabled = true;
+      try { await loadFromUrl(v); } finally {
+        loadBtn.disabled = false;
+        solveBtn.disabled = false;
+      }
     });
 
-    // Initialize
-    (async function boot() {
-      dom.urlInput.value = initialUrl;
-      updateUrl(initialUrl);
-      await initLoad(initialUrl);
-      // Auto-solve on boot
-      await ensureWorker();
-      await solve();
+    // Event: Re-run solve using current image
+    solveBtn.addEventListener('click', async () => {
+      if (!imgEl.complete || !imgEl.naturalWidth) return;
+      solveBtn.disabled = true;
+      try { await preprocessAndSolve(imgEl); } finally { solveBtn.disabled = false; }
+    });
+
+    // File input
+    fileInput.addEventListener('change', async (e) => {
+      const f = e.target.files?.[0];
+      if (!f) return;
+      resetUI();
+      if (currentObjectUrl) URL.revokeObjectURL(currentObjectUrl);
+      currentObjectUrl = URL.createObjectURL(f);
+      imgEl.src = currentObjectUrl;
+      await new Promise(r => imgEl.onload = r);
+      srcInfo.textContent = f.name + ' (local file)';
+      imgSizePill.textContent = `${imgEl.naturalWidth}×${imgEl.naturalHeight}px`;
+      await preprocessAndSolve(imgEl);
+    });
+
+    // Paste support
+    document.addEventListener('paste', async (ev) => {
+      const t = ev.clipboardData?.getData('text');
+      if (t && /^https?:\/\//i.test(t.trim())) {
+        urlInput.value = t.trim();
+        loadBtn.click();
+      }
+    });
+
+    // Initialize with ?url=... or default sample
+    (async function init() {
+      const qp = getParam('url');
+      if (qp) urlInput.value = qp;
+      const url = qp || generateSampleCaptcha();
+      await loadFromUrl(url);
     })();
   </script>
 </body>
